@@ -1,0 +1,370 @@
+{
+  "name": "Détection séminaire",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 2
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -208,
+        0
+      ],
+      "id": "43c11b1c-66e6-4186-b0ff-c0607bf30614",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/home/sid2019-6/Documents/Sujet_Etude_M1/mails.json",
+        "options": {
+          "dataPropertyName": "data"
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        80,
+        0
+      ],
+      "id": "d0415edb-cd8e-452d-9d20-a14551894ca8",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        288,
+        0
+      ],
+      "id": "43db457a-e221-419d-980f-6ade98ec5641",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "// récupération des données\nconst inputData = items[0].json.data;\n\n// date actuelle\nconst now = new Date();\n\n// Date d'il y a deux minutes\nconst dateValide = new Date(now.getTime() - 2 * 60 * 1000);\n\n// Filtrer les emails \nconst recentEmails = inputData.filter(email => new Date(email.date) > dateValide);\n\n// Retourner le résultat\nreturn recentEmails.map(email => ({ json: email }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        496,
+        0
+      ],
+      "id": "f344d7f4-133e-4617-907e-1b21b3c828ce",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify($input.all().map(item => ({ id: item.json.id, subject : item.json.subject,text: item.json.text })), null, 2) }}",
+        "options": {
+          "systemMessage": "Tu es un assistant chargé d'analyser des emails envoyés par un professeur à un collègue ou à un étudiant.\n\nTa tâche est de déterminer si le contenu de chaque message concerne un séminaire universitaire, c’est-à-dire :\n- une annonce de séminaire,\n- une invitation à un séminaire,\n- une question ou une demande en lien avec un séminaire.\n\nRéponds pour chaque email uniquement par **\"oui\"** s’il concerne un séminaire, sinon **\"non\"**.\n\nNe donne aucune autre explication.\n\nRéponds uniquement avec un tableau JSON de la forme suivante :\\n\"\n    '[{\"id\": \"t3xrmqi5oz\", \"isSeminar\": \"non\"}, ...]'.\n\nVoici les emails à analyser :\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        976,
+        64
+      ],
+      "id": "ad04bdc0-6294-465d-90d3-f88dce9fc97f",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "mistral-tiny",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+      "typeVersion": 1,
+      "position": [
+        944,
+        256
+      ],
+      "id": "60941a1d-c994-46c0-8b86-ba509a1bc0ca",
+      "name": "Mistral Cloud Chat Model",
+      "credentials": {
+        "mistralCloudApi": {
+          "id": "4PusnNahPc18JXZb",
+          "name": "Mistral Cloud account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const mail = item.json;\n  return {\n    json: {\n      id: mail.id,\n      subject : mail.subject,\n      text: mail.body.text,\n      meta: {\n        id : mail.id,\n        threadId : mail.threadId,\n        from : {\n          adress : mail.from.adress\n        },\n        to : {\n          adress : mail.to.adress\n        },\n        cc : mail.cc,\n        bcc : mail.bcc,\n        date : mail.date,\n        subject : mail.subject,\n        body : {\n          text : mail.body.text,\n          html : mail.body.html\n        },\n        attachments : mail.attachments,\n        folder : mail.folder\n      } // toutes les infos utiles pour la suite\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ],
+      "id": "3d6c9eba-922d-47ea-a4da-e3db3ac2d80b",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// On récupère tous les outputs, on garde le premier non vide\nconst rawOutput = items.find(item => item.json.output)?.json.output;\n\nlet parsed;\n\ntry {\n  // Si l'output est un string JSON, on le parse\n  parsed = JSON.parse(rawOutput);\n\n  // Parfois les éléments sont eux-mêmes des strings (ex: [\"{\\\"id\\\":\\\"...\\\"}\"])\n  if (Array.isArray(parsed) && typeof parsed[0] === 'string') {\n    parsed = parsed.map(e => JSON.parse(e));\n  }\n\n} catch (err) {\n  throw new Error(\"Échec du parsing de la réponse du LLM : \" + err.message);\n}\n\n// On retourne un item par élément du tableau nettoyé\nreturn parsed.map(entry => ({ json: entry }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        48
+      ],
+      "id": "75c8102a-d71d-4b18-b0f9-bf12b0e6b03c",
+      "name": "Code3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f0ccad81-8d1b-4755-8441-f7455c0d6e2d",
+              "leftValue": "={{ $json.isSeminar }}",
+              "rightValue": "oui",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1744,
+        0
+      ],
+      "id": "a1cf91b5-83f7-4cea-8b41-08af5d01ebc5",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Récupère la liste des mails à valider depuis l'entrée\nconst mails = $input.all().map(item => item.json);\n\n// Construire un message Discord avec une ligne par mail\nlet message = \"Bonjour ! J'ai détecté l'envoi d'un mail pour un séminaire. Indique moi si tu souhaites que je prenne le relais pour la suite des échanges ?\\n\\n\";\n\nmails.forEach(mail => {\n  message += `• **${mail.id}** - ${mail.meta.subject} - ${mail.meta.to.adress} - ${mail.meta.date}\\n  Réponds par 👍 (oui) ou 👎 (non)\\n\\n`;\n});\n\nreturn [{ json: { content: message } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2112,
+        -16
+      ],
+      "id": "e8181cd7-d1a6-4baa-bd03-a7c34493e31b",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1440,
+        -192
+      ],
+      "id": "0e586a2a-d4c2-4365-ae6c-3a0d75e4546c",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "guildId": {
+          "__rl": true,
+          "value": "1404883110163779746",
+          "mode": "list",
+          "cachedResultName": "Sujet Etude M1",
+          "cachedResultUrl": "https://discord.com/channels/1404883110163779746"
+        },
+        "channelId": {
+          "__rl": true,
+          "value": "1404883110163779749",
+          "mode": "list",
+          "cachedResultName": "gestion-des-séminaires",
+          "cachedResultUrl": "https://discord.com/channels/1404883110163779746/1404883110163779749"
+        },
+        "content": "={{ $json.content }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        2384,
+        -16
+      ],
+      "id": "ab277079-10a5-41f8-b880-405513d9a7e2",
+      "name": "Send a message",
+      "webhookId": "6a59e20d-b7d3-4d7f-a239-cbca23f7e8b7",
+      "credentials": {
+        "discordBotApi": {
+          "id": "yCxm3qh1t4kLKxVj",
+          "name": "Discord Bot account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mistral Cloud Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code3": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "04ee2280-bef9-4510-842a-2bd4eb4031c7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "129202ca1ffe12ace482ef4f1e073c3fc6d4bd3dcec29e94333d4dc89740c937"
+  },
+  "id": "h98CKqQcSNRTReko",
+  "tags": []
+}
