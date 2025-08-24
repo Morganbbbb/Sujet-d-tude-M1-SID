@@ -18,7 +18,7 @@ Ce projet contient un script **Node.js** (`index.js`) qui envoie des requêtes �
 npm install
 
 ## Configurez vos variables d'environnement dans un fichier .env
-DISCORD_TOKEN = ton_tokendiscord
+DISCORD_TOKEN = ton_tokendiscord  
 N8N_WEBHOOK_URL = url_du_webhook
 
 ## Exécution
