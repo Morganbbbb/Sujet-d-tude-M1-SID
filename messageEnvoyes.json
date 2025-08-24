@@ -1,0 +1,276 @@
+{
+  "name": "Messages envoyés",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -16
+      ],
+      "id": "58ac7f25-e038-4c93-869a-d1dc774dd0db",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/home/sid2019-6/Documents/Sujet_Etude_M1/mails.json",
+        "options": {
+          "dataPropertyName": "=data"
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        96
+      ],
+      "id": "bf247c5a-e697-4ba2-a61d-8042225c0bd3",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e8b63c2e-5cbf-4b14-8bd2-51e5d9538bb5",
+              "name": "from",
+              "value": "mbrun1@univ-tlse3.fr",
+              "type": "string"
+            },
+            {
+              "id": "52039cd4-3066-48cf-8f60-fdc1b5544409",
+              "name": "to",
+              "value": "adupont@univ-bordeaux.fr",
+              "type": "string"
+            },
+            {
+              "id": "b7a9a64c-090c-4361-b9cb-99813d520b97",
+              "name": "cc",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "65b0969e-45fb-4761-8ed1-25c1c5f31b9c",
+              "name": "bcc",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "4229aa5f-7c78-4a31-bc48-2b5d82107dd7",
+              "name": "subject",
+              "value": "Invitation à un évènement",
+              "type": "string"
+            },
+            {
+              "id": "7165ee0d-aa5b-4875-a5ec-956c6b9492c2",
+              "name": "body",
+              "value": "=Bonjour Monsieur Dupont, \n\nJe me présente, je suis Morgan Brun, chercheur à l'institut de Mathématiques de l'université de Toulouse Paul Sabatier. Travaillant dans le domaine de l'apprentissage supervisé, j'ai pu observer vos travaux sur ce domaine et notament sur la détection de cancer en imagerie grâce à un nouvel algortihme optimisant la recherche par réseaux de neurones. \nJe voulais donc savoir si vous aimeriez bien venir sur Toulouse pour parler de vos travaux et de vos avancées au cours d'un séminaire proposé par l'Université.\n\nJe vous remercie par avance,\nCordialement,\n\nMorgan Brun\nchercheur à l'institut de Maths de tlseIII",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        -80,
+        -176
+      ],
+      "id": "9e2c8dbe-3968-4227-b8ec-3aadd76978bb",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "// récupère les données d'entrée\nconst input = items[0].json;\n\n// permet de générer une id aléatoire\nfunction generateId() {\n  return Math.random().toString(36).substr(2, 10);\n}\n\n// transformer un text en modèle html\nfunction textToHtml(text) {\n  if (!text) return '';\n  const paragraphs = text\n    .split(/\\r?\\n+/)                     // Séparation par ligne vide ou simple retour à la ligne\n    .map(line => `<p>${line.trim()}</p>`)\n    .join('');\n  return paragraphs;\n}\n\n\nconst mail = {\n  id: generateId(),\n  threadId: generateId(),\n  from : {\n    adress : input.from\n  },\n  to : {\n    adress : input.to\n  },\n  cc:input.cc,\n  bcc:input.bcc,\n  date: new Date().toISOString(),\n  subject:input.subject,\n  body: {\n    text : input.body,\n    html : textToHtml(input.body)\n  },\n  attachments : \"pas besoin\",\n  folder : 'SENT'\n};\n\nreturn [\n  {\n    json: mail\n  }\n  ];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        -176
+      ],
+      "id": "5cd6c57e-5ca9-4ccc-a4bb-63f0192823d2",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/home/sid2019-6/Documents/Sujet_Etude_M1/mails.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        -96
+      ],
+      "id": "0423e249-97f8-4647-9703-fd281342aa85",
+      "name": "Read/Write Files from Disk1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        576,
+        -96
+      ],
+      "id": "7039487e-a903-4eab-976c-0a922a180608",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        -96
+      ],
+      "id": "9d2dbff2-c24c-4971-ab09-b1bb1851e6d7",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const existingMails = items[0].json.data; // data est déjà un tableau de mails\n\nconst mailsFromFile = existingMails.map(mail => ({ json: mail }));\n\nreturn mailsFromFile;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        96
+      ],
+      "id": "69fa2fc5-825a-472d-97f0-c9c2f76fccd7",
+      "name": "Code3"
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        160,
+        96
+      ],
+      "id": "d6099b2f-80a4-4192-8767-b57fb4ca4608",
+      "name": "Extract from File"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk1": {
+      "main": [
+        []
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code3": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "020d1f7b-f224-462c-b42f-93eac6ad47b1",
+  "meta": {
+    "instanceId": "129202ca1ffe12ace482ef4f1e073c3fc6d4bd3dcec29e94333d4dc89740c937"
+  },
+  "id": "TfgE6rhBBKfL2sFa",
+  "tags": []
+}
