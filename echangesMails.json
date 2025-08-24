@@ -1,0 +1,992 @@
+{
+  "name": "Échanges mails",
+  "nodes": [
+    {
+      "parameters": {
+        "fileSelector": "/home/sid2019-6/Documents/Sujet_Etude_M1/mails_recus.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        -32
+      ],
+      "id": "b3d84878-a71c-47b6-a7f4-e7e77c89f4d3",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        96,
+        -32
+      ],
+      "id": "4b514357-1bbe-4459-baec-1c162a7a2dbb",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst threshold = 2 * 60 * 1000; // 2 minutes en millisecondes\n\nconst input = items[0].json.data;\n\nfor (let message of input) {\n  const messageDate = new Date(message.date);\n  const diff = now - messageDate;\n\n  if (diff <= threshold) {\n    // Message trouvé il y a moins de 2 minutes\n    return [{ json: message }];\n  }\n}\n\n// Aucun message récent\nreturn [{ json: { threadId: \"null\" } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        -32
+      ],
+      "id": "44e7a75c-8eb2-4331-ba7a-12fad4a7647b",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/home/sid2019-6/Documents/Sujet_Etude_M1/suivi_mails.json",
+        "options": {
+          "dataPropertyName": "data"
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        112
+      ],
+      "id": "cc82cd45-fcda-4907-bd1b-3fcda7a28fc8",
+      "name": "Read/Write Files from Disk1"
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        1392,
+        112
+      ],
+      "id": "df2550c7-a4c0-4f94-8f12-3639a9ff06d6",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const existingMails = items[0].json.data; // data est déjà un tableau de mails\n\nconst mailsFromFile = existingMails.map(mail => ({ json: mail }));\n\nreturn mailsFromFile;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        112
+      ],
+      "id": "b460db49-6957-45c2-bbe6-50db77ce783f",
+      "name": "Code1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1728,
+        -16
+      ],
+      "id": "caf8661c-cd86-4c39-a076-4a16352a05b6",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 2
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -320,
+        -32
+      ],
+      "id": "b3702f7a-192c-4776-bb4b-f92d5d64f4ea",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Récupère les données d'entrée\nconst items = $input.all();\n\n// On extrait les données pures\nconst data = items.map(item => item.json);\n\n// Crée un map pour compter les occurrences des treadId\nconst threadIdMap = {};\n\n// D'abord, on compte combien de fois chaque treadId apparaît\nfor (const item of data) {\n  const threadId = item.threadId;\n  if (threadId && threadId !== \"\") {\n    threadIdMap[threadId] = (threadIdMap[threadId] || 0) + 1;\n  }\n}\n\n// Ensuite, on garde uniquement ceux dont le treadId apparaît plus d'une fois\nconst matchedItems = data.filter(item => {\n  const threadId = item.threadId;\n  return threadId && threadIdMap[threadId] > 1;\n});\n\n// Formate le résultat pour n8n\nreturn matchedItems.map(item => ({ json: item }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        -16
+      ],
+      "id": "53b19e00-cad4-4fce-a365-70f8a6bec5fb",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        16
+      ],
+      "id": "9000ead2-c94d-4972-ae80-0ad61e8ab8b9",
+      "name": "Code3"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Séparer les deux objets d'entrée\nconst inputItems = items.map(i => i.json);\n\n// Trouver le message reçu\nconst reply = inputItems.find(i => i.folder === 'RECEIVED');\n\n// Trouver la conversation existante avec le même threadId\nconst conversation = inputItems.find(i => i.threadId === reply.threadId && i.folder !== 'RECEIVED');\n\nif (!reply || !conversation) {\n  throw new Error('Impossible de trouver la réponse ou la conversation.');\n}\n\n// Format texte\nconst newText = `---\\nID: ${reply.id}\\nFrom: ${reply.from.adress}\\nFolder: ${reply.folder}\\nDate: ${reply.date}\\nMessage:\\n${reply.body.text}\\n\\n`;\n\n// Format HTML\nconst newHtml = `<hr><p><strong>ID:</strong> ${reply.id}<br><strong>From:</strong> ${reply.from.adress}<br><strong>Folder:</strong> ${reply.folder}<br><strong>Date:</strong> ${reply.date}</p>${reply.body.html}`;\n\n// Mise à jour de la conversation\nconversation.date_last = reply.date;\nconversation.conv.text += newText;\nconversation.conv.html += newHtml;\n\nreturn [\n  {\n    json: conversation\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2352,
+        -16
+      ],
+      "id": "2b641b25-95f3-40c4-8c8d-c2419f44a097",
+      "name": "Code4"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Fil de discussion :\n{{ $json.conv.text }}\n\nSujet : {{ $json.subject }}\nAdresse organisateur : {{ $json.who1.adress }}\nAdresse intervenant : {{ $json.who2.adress }}\nDate du premier message : {{ $json.date_first }}\nDate du dernier message : {{ $json.date_last }}\nPièces jointes : {{ $json.attachments }}\n\nStatut actuel (si déjà défini) : {{ $json.workflow_status.current_step }}\nCommentaire précédent : {{ $json.workflow_status.comments }}\n",
+        "options": {
+          "systemMessage": "Tu es un agent IA spécialisé dans l’organisation de séminaires académiques.\nTu reçois un fil de discussion email entre un organisateur (Morgan) et un intervenant potentiel.\nTon rôle est de déterminer à quelle étape du processus d’organisation du séminaire se trouve la conversation.\n\nÉtapes possibles :\n- invitation_envoyée : l’organisateur a envoyé une invitation, sans réponse.\n- interet_exprimé : l’intervenant a exprimé de l’intérêt pour participer.\n- disponibilités_proposées : des créneaux de dates ont été proposés.\n- date_confirmée : une date a été convenue entre les deux parties.\n- infos_pratiques_en_cours : échanges concernant des éléments pratiques (bio, titre de présentation, besoins logistiques).\n- seminaire_validé : tout est confirmé, l'intervention est prête.\n- refusé : l’intervenant a décliné l’invitation.\n- annulé : la discussion a été interrompue sans suite.\n- autre : étape non couverte par la liste (à préciser dans comments).\n\nCe que tu dois faire :\n1- Analyse le contenu du fil de discussion fourni.\n2- Identifie l’étape actuelle du processus.\n3- Génère uniquement le bloc JSON suivant :\n{\n  \"workflow_status\": {\n    \"current_step\": \"ÉTAPE_CHOISIE\",\n    \"updated_by\": \"ai-agent\",\n    \"updated_at\": \"DATE_ISO\",\n    \"comments\": \"Pourquoi cette étape a été choisie, de manière concise.\",\n    \"help\": {\n      \"ind\": 0 ou 1,\n      \"message\": \"Message d’aide attendu si nécessaire (2 phrases max).\",\n      \"response\": \"\"\n    }\n  }\n}\n\nDétails importants :\n- current_step doit correspondre strictement à l’une des étapes listées.\n- updated_at doit contenir la date actuelle au format ISO (ex : \"2025-08-16T10:30:00.000Z\").\n- help.ind = 1 si tu n'as pas la réponse à la question, ou question indiscrète, tu dois mettre 1 (par exemple : “merci d’indiquer le lieu ou le déroulé de l’événement”).\n- help.ind = 0 si tout est clair et aucune aide n’est nécessaire.\n- help.response est toujours vide.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        2736,
+        -128
+      ],
+      "id": "ebc20d08-ac76-47cf-8d79-5a4a530b6524",
+      "name": "IA Agent : contexte"
+    },
+    {
+      "parameters": {
+        "model": "mistral-tiny",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+      "typeVersion": 1,
+      "position": [
+        2736,
+        272
+      ],
+      "id": "84ea37cd-2611-42e6-8d07-950cef20e690",
+      "name": "Mistral Cloud Chat Model"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Étape du processus :\n{{ $json.workflow_status.current_step }}\n\nCommentaire lié à l’étape :\n{{ $json.workflow_status.comments }}\n\nActions précédemment recommandées par l’IA :\n{{ $json.action.next_action }}\n\nCommentaires IA précédent :\n{{ $json.action.commentaires_ia }}\n\nAide spécifique si disponible :\n{{ $json.workflow_status.help.response }}\n\nÉchanges de mails (fil de discussion complet) :\n{{ $json.conv.text }}\n\nRelance ?\n{{ $json.relance }}",
+        "options": {
+          "systemMessage": "=Tu es Morgan, un assistant IA chargé d'organiser un séminaire universitaire.\nTon rôle est d'échanger avec des intervenants (professeurs, chercheurs, etc.) par e-mail de manière claire, professionnelle et courtoise en vouvoyant. Tu dois être concis.\n\nTa mission:\n1- Lis attentivement l’échange de mails (conv.text) entre toi (Morgan) et l’intervenant.\n2- Analyse l’étape actuelle du processus (workflow_status.current_step) et son commentaire (workflow_status.comments).\n3- Vérifie si une relance est nécessaire (relance = \"oui\" signifie qu’aucune réponse n’a été reçue depuis plus de 2 jours).\n4- Génère un message de réponse adapté à la situation.\n5-Propose les prochaines actions concrètes à effectuer (ex : envoyer un programme, relancer, demander des infos...).\n\nRègles pour la rédaction du mail :\n- Sois professionnel et cordial.\n- Si relance = \"oui\", rédige un mail de relance respectueuse : bref, poli, qui rappelle la dernière demande.\n- Si relance = \"non\", poursuis simplement la discussion selon le contexte (par exemple en répondant à une question, ou en partageant des détails).\n- Tu écris au nom de Morgan, l’organisateur du séminaire.\n- Tu dois toujours utiliser getSeminarEvent\n\n\nFormat de sortie attendu (JSON):\n{\n  \"response_text\": \"Texte du message à envoyer, en français, clair, poli et professionnel, sous forme de mail.\",\n  \"next_actions\": [\n    \"action_1\",\n    \"action_2\"\n  ],\n  \"commentaire_ia\": \"Pourquoi ces actions ont été choisies (1 à 2 phrases maximum).\",\n  \"disc_text\": \"Une phrase pour résumer l’état de la discussion.\"\n}\n\nDonnées que tu reçois :"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        4112,
+        -80
+      ],
+      "id": "e2c44cfa-7a66-476f-874f-d52aa4d867ce",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3376,
+        -32
+      ],
+      "id": "651faec2-5080-4925-8807-0bc65ba78cdc",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// On récupère les deux objets d'entrée\nconst data = items.map(item => item.json);\n\n// data[0] contient le bloc avec le champ \"output\" (string JSON)\n// data[1] contient l'objet avec le champ \"workflow_status\" à mettre à jour\n\nconst rawOutput = data[0].output;\n\n// On nettoie la string pour enlever les ```json et autres\nconst jsonString = rawOutput.replace(/```json|```/g, '').trim();\n\n// Corriger les erreurs de format dans le JSON\nconst cleanedJson = jsonString\n  .replace(/\"current_step\":\\s*\"(.+?)\"\\s*\\(\\d+\\)/, '\"current_step\": \"$1\"') // supprime (4)\n  .replace(/\"ind\":\\s*O\\(pas besoin\\)/, '\"ind\": \"0\"'); // corrige O(pas besoin)\n\n// On parse le JSON propre\nlet parsed;\ntry {\n  parsed = JSON.parse(cleanedJson);\n} catch (err) {\n  throw new Error('Erreur de parsing JSON : ' + err.message);\n}\n\n// Mise à jour de workflow_status dans le deuxième objet\ndata[1].workflow_status = parsed.workflow_status;\n\n// On retourne le résultat mis à jour comme item unique\nreturn [\n  {\n    json: data[1]\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3568,
+        -32
+      ],
+      "id": "a1344f51-65a7-460f-87c7-453ca88e829b",
+      "name": "Code5"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Étape 1 : récupérer les deux objets d'entrée\nconst data = items.map(item => item.json);\n\n// Étape 2 : parser l'objet JSON contenu dans le champ \"output\"\nlet parsedOutput;\ntry {\n  parsedOutput = JSON.parse(data[0].output);\n} catch (err) {\n  throw new Error('Erreur de parsing JSON : ' + err.message);\n}\n\n// Étape 3 : cibler l'objet principal à modifier\nconst updatedObject = data[1];\n\n// Étape 4 : mise à jour des champs\nupdatedObject.action.next_action = parsedOutput.next_actions;\nupdatedObject.action.commentaires_ia = parsedOutput.commentaire_ia;\n\nupdatedObject.response_mail = parsedOutput.response_text;\nupdatedObject.disc_text = parsedOutput.disc_text;\n\n// Étape 5 : retourner l'objet mis à jour\nreturn [\n  {\n    json: updatedObject\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4928,
+        32
+      ],
+      "id": "89538cd1-8e56-4b50-abc0-6f1f8edb286c",
+      "name": "Code6"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        4624,
+        32
+      ],
+      "id": "29bb304d-e950-49e7-89cb-86dd089f38d3",
+      "name": "Merge2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "33bf6283-bec7-4226-afb1-0afbc4bd2828",
+              "leftValue": "={{ $json.workflow_status.help.ind }}",
+              "rightValue": "1",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3120,
+        -224
+      ],
+      "id": "ad607381-0e29-4c24-8594-c9fb6ed18540",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendAndWait",
+        "guildId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "message": "={{ $json.workflow_status.help.message }}",
+        "responseType": "freeText",
+        "options": {
+          "limitWaitTime": {
+            "values": {
+              "resumeAmount": 2,
+              "resumeUnit": "days"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        3456,
+        -240
+      ],
+      "id": "b9bb714b-0a5e-4ada-be2d-4bcc34e8ba58",
+      "name": "Send message and wait for response",
+      "webhookId": "96a7a0d5-16dd-4fa6-b524-464533ec2849",
+      "credentials": {
+        "discordBotApi": {
+          "id": "yCxm3qh1t4kLKxVj",
+          "name": "Discord Bot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3680,
+        -240
+      ],
+      "id": "5e46d47e-df7f-4473-8f51-589bfc8c0575",
+      "name": "Code7"
+    },
+    {
+      "parameters": {
+        "model": "mistral-tiny",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+      "typeVersion": 1,
+      "position": [
+        4112,
+        144
+      ],
+      "id": "d5d4bbf2-7477-46cf-9f40-fc3027099bfe",
+      "name": "Mistral Cloud Chat Model1"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "guildId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "content": "=- {{ $json.threadId }} - {{ $json.who2.adress }} - {{ $json.subject }} - {{ $json.date_last }}\n{{ $json.disc_text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        5792,
+        -176
+      ],
+      "id": "cd73dc03-832a-4661-9e8e-6b789b7e3296",
+      "name": "Send a message",
+      "webhookId": "0ff8e248-93c4-477e-9600-0e22c12f1959",
+      "credentials": {
+        "discordBotApi": {
+          "id": "yCxm3qh1t4kLKxVj",
+          "name": "Discord Bot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = items.map(item => item.json);\n\nfunction updateConversation(data) {\n  return data.map(item => {\n    const emailAgent = item.who1.adress;\n    const nowDate = item.workflow_status.updated_at || new Date().toISOString();\n    const newId = 'newmsg_' + Math.random().toString(36).substring(2, 9);\n\n    // Ajouter le message dans conv.text\n    const newMessage = `---\\nID: ${newId}\\nFrom: ${emailAgent}\\nFolder: SENT\\nDate: ${nowDate}\\nMessage:\\n${item.response_mail}\\n\\n`;\n    item.conv.text += newMessage;\n\n    // Supprimer les champs inutiles\n    delete item.response_mail;\n    delete item.disc_text;\n\n    return item;\n  });\n}\n\nconst updatedData = updateConversation(data);\n\nreturn updatedData;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5296,
+        32
+      ],
+      "id": "9f6c37f7-8e66-4d06-a856-feb2d3794ed8",
+      "name": "Code8"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/home/sid2019-6/Documents/Sujet_Etude_M1/suivi_mails.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        5792,
+        144
+      ],
+      "id": "d56dba2a-fca4-498e-8ec0-6c5b325bdb51",
+      "name": "Read/Write Files from Disk2"
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        5968,
+        144
+      ],
+      "id": "dfd08be3-6704-4834-b6b0-3b19b723c6e1",
+      "name": "Extract from File2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const existingMails = items[0].json.data; // data est déjà un tableau de mails\n\nconst mailsFromFile = existingMails.map(mail => ({ json: mail }));\n\nreturn mailsFromFile;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6176,
+        144
+      ],
+      "id": "a8c0ec17-ece8-4f97-8f2e-d57f9de06349",
+      "name": "Code9"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Récupérer tous les objets json dans l'input\nconst allItems = $input.all().map(item => item.json);\n\n// Récupérer le premier élément\nconst firstItem = allItems[0];\n\n// Identifier le threadId ou treadId du premier élément\nconst threadIdToKeep = firstItem.threadId || firstItem.treadId;\n\nif (!threadIdToKeep) {\n  throw new Error(\"Aucun threadId/treadId trouvé dans le premier élément.\");\n}\n\n// Filtrer la liste pour garder uniquement le premier élément + les éléments dont le threadId est différent\nconst filtered = allItems.filter((item, index) => {\n  const threadId = item.threadId || item.treadId;\n  return index === 0 || threadId !== threadIdToKeep;\n});\n\n// Réinitialiser workflow_status.help.response à une chaîne vide pour chaque item conservé\nconst updated = filtered.map(item => {\n  if (item.workflow_status && item.workflow_status.help) {\n    item.workflow_status.help.response = \"\";\n  }\n  return { json: item };\n});\n\nreturn updated;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6592,
+        16
+      ],
+      "id": "e20b40f5-7635-4b1e-a4ed-21333bdd0fcd",
+      "name": "Code10"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        6416,
+        16
+      ],
+      "id": "a2a45415-e644-4f36-ba85-f9716a77347c",
+      "name": "Merge3"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        6832,
+        16
+      ],
+      "id": "125533d1-4444-43b3-9b94-0bcfdbc8ec8a",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/home/sid2019-6/Documents/Sujet_Etude_M1/suivi_mails.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        7088,
+        16
+      ],
+      "id": "18e22e0f-70bf-4ad6-af7b-bf2c480edd1c",
+      "name": "Read/Write Files from Disk3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "97f643c1-4c6e-4a36-a648-36f9de58f524",
+              "leftValue": "={{ $json.threadId }}",
+              "rightValue": "null",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        -32
+      ],
+      "id": "5914482a-5eee-4068-8aa3-7ac1c2bc194d",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/home/sid2019-6/Documents/Sujet_Etude_M1/suivi_mails.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        896,
+        -176
+      ],
+      "id": "1a629f87-e3b8-440f-a51a-3e8c198d80a7",
+      "name": "Read/Write Files from Disk4"
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        -176
+      ],
+      "id": "8c81ce30-154c-491d-9630-1a407373a465",
+      "name": "Extract from File3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0].json.data;\nconst now = new Date();\nconst twoDaysInMs = 2 * 24 * 60 * 60 * 1000;\n\nfor (let item of input) {\n  const dateLast = new Date(item.date_last);\n  const currentStep = item.wconst orkflow_status?.current_step || '';\n\nexcludedSteps = [\n  \"invitation envoyée\",\n  \"refusé\",\n  \"annulé\",\n  \"séminaire_validé\",\n  \"séminaire validé\"\n];\n  // Vérifie si date_last a plus de 2 jours ET current_step différent de \"invitation envoyée\"\n if ((now - dateLast > twoDaysInMs) && \n    !excludedSteps.some(step => currentStep.toLowerCase().includes(step))){\n    // On ajoute ou modifie relance: \"oui\"\n    item.relance = \"oui\";\n    return [{ json: item }];\n  }\n}\n\n// Aucun résultat trouvé\nreturn [];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2320,
+        -176
+      ],
+      "id": "217c36ae-b7d0-49ad-96f8-78f611cd3429",
+      "name": "Code11"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk1": {
+      "main": [
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code3": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read/Write Files from Disk1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Code4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code4": {
+      "main": [
+        [
+          {
+            "node": "IA Agent : contexte",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Mistral Cloud Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "IA Agent : contexte",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IA Agent : contexte": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Code5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code5": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Code6": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "Code6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response": {
+      "main": [
+        [
+          {
+            "node": "Code7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code7": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mistral Cloud Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code8": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk2": {
+      "main": [
+        [
+          {
+            "node": "Extract from File2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File2": {
+      "main": [
+        [
+          {
+            "node": "Code9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code9": {
+      "main": [
+        [
+          {
+            "node": "Merge3",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Code10": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge3": {
+      "main": [
+        [
+          {
+            "node": "Code10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk4": {
+      "main": [
+        [
+          {
+            "node": "Extract from File3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File3": {
+      "main": [
+        [
+          {
+            "node": "Code11",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code11": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "8a00049e-c982-4d77-b306-2acfeb1123fc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "129202ca1ffe12ace482ef4f1e073c3fc6d4bd3dcec29e94333d4dc89740c937"
+  },
+  "id": "zBNnVkn667t2bxQz",
+  "tags": []
+}
