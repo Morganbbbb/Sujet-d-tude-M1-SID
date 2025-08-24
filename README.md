@@ -11,14 +11,14 @@ Ce projet contient un script **Node.js** (`index.js`) qui envoie des requêtes �
 ## 🚀 Installation
 1. Clonez le dépôt :
    ```bash
-   git clone https://github.com/tonpseudo/ton-repo.git
-   cd ton-repo
+   git clone https://github.com/Morganbbbb/Sujet-d-tude-M1-SID.git
+   cd Sujet-d-tude-M1-SID
 
 ## Installez les dépendances
 npm install
 
 ## Configurez vos variables d'environnement dans un fichier .env
-DISCORD_TOKEN = ton_tokendiscord  
+DISCORD_TOKEN = tokendiscord  
 N8N_WEBHOOK_URL = url_du_webhook
 
 ## Exécution
